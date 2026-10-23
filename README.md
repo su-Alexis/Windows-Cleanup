@@ -3,6 +3,11 @@
 A Windows batch script that scans first, shows you what it found, and only then
 asks what to delete. Nothing is removed before you pick an option.
 
+This is the standalone copy of the `cleanup_main.bat` that
+[winGG10&11](https://github.com/su-Alexis/winGG10-11) writes to the Desktop. The two
+are kept byte-identical: if they ever differ, the copy embedded in winGG10&11 is the
+current one.
+
 ---
 
 ## Usage
@@ -53,6 +58,38 @@ Option `[4]` force-closes applications. Unsaved work in them is lost. If the
 script cannot read an answer to that prompt, it **leaves the applications
 running** rather than guessing — that is the safe side of the question.
 
+## What it cleans
+
+The same fixed list is used twice, once to measure and once to clean. Only the
+*contents* of each folder are removed, never the folder itself.
+
+| Target | Folder |
+|---|---|
+| User temp | `%TEMP%` (only if it is a `Temp` or `Tmp` folder, see below) |
+| User temp (alt) | `%LOCALAPPDATA%\Temp` |
+| System temp | `%SystemRoot%\Temp` |
+| Windows Update cache | `%SystemRoot%\SoftwareDistribution\Download` |
+| Delivery Optimization | `%SystemRoot%\SoftwareDistribution\DeliveryOptimization` |
+| Crash dumps | `%LOCALAPPDATA%\CrashDumps` |
+| Error reports | `%ProgramData%\Microsoft\Windows\WER\ReportQueue` and `ReportArchive` |
+| Thumbnail/icon cache | `*cache_*.db` in `%LOCALAPPDATA%\Microsoft\Windows\Explorer` |
+
+It also flushes the DNS cache and starts Windows' idle-maintenance tasks in the
+background. Disk Cleanup runs with the handlers you tick in its own list.
+
+### Guards
+
+- **`%TEMP%` is checked first.** It is the only target whose whole path a user or
+  program can redirect, so it is cleaned only when its last folder is named `Temp`
+  or `Tmp`. Anything else (a custom scratch folder, a per-session `\Temp\2`) is
+  logged as `REFUSED` and left alone. `%LOCALAPPDATA%\Temp` is cleaned either way.
+- **The delete routine refuses** an empty path, a drive root, and the Windows,
+  System32, Users, Program Files, ProgramData, profile, AppData and LocalAppData
+  folders themselves, in case an environment variable ever resolves to one of them.
+- Browser profiles are not on the target list, so bookmarks, passwords and history
+  are not touched. If a browser is running, the scan warns you because `%TEMP%` can
+  hold an in-progress download.
+
 ## What it writes
 
 A `cleanup.log` beside the script, trimmed to its last 300 lines on each run so it
@@ -70,8 +107,9 @@ copy wherever you like and its log stays with it.
   choose an option that says so.
 - Prompts re-ask quietly on a mistyped key rather than beeping, and give up after
   ten unusable answers. The force-close prompt fails safe to *not* closing things.
-- Disk Cleanup is invoked through the built-in Windows handler rather than deleting
-  system locations directly.
+- Only fixed cache and temp folders are deleted directly. Everything else Windows
+  keeps (old installs, update leftovers, and so on) goes through Disk Cleanup's own
+  handlers, which you tick before it runs.
 
 ## Caveats
 
@@ -81,6 +119,24 @@ copy wherever you like and its log stays with it.
   caches, which is normal and self-healing.
 - Trimming memory asks Windows to release working sets; applications may be
   briefly slower afterwards as they page back in.
+
+## A note on antivirus
+
+An earlier revision listed the browser profile folders by name in the refuse list
+and said so on screen. Embedded in winGG10&11, that version was flagged by Microsoft
+Defender (through AMSI) as `Trojan:BAT/CryptoDrainer.C!MTB`, which we believe is a
+false positive. Those entries could never match (only the fixed targets above are
+ever passed in), so they were removed, and the flagged and fixed versions were
+tested side by side. This copy is the fixed version.
+
+## Related tools
+
+- [winGG10&11](https://github.com/su-Alexis/winGG10-11): the Windows setup script
+  that deploys this and the two tools below.
+- [Network Refresh](https://github.com/su-Alexis/Network-Refresh)
+  (`net-reset-lite.bat`): clears network caches and renews leases, no reboot.
+- [Network Stack Reset](https://github.com/su-Alexis/Network-Stack-Reset)
+  (`net-reset-reboot.bat`): full TCP/IP and Winsock reset, needs a reboot.
 
 ## Requirements
 
