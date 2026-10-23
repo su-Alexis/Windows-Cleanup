@@ -12,10 +12,16 @@ title Windows Cleanup
 :: ============================================================
 
 :: --- Self-elevate if not already admin ---
+:: The path goes inside a single-quoted PowerShell string, so any ' in it is
+:: doubled first: a folder like C:\Users\Bob's PC would otherwise break the
+:: launch, and a crafted folder name could run PowerShell of its own. Set
+:: BEFORE the if block, because cmd expands %...% for a whole block at once.
+set "PSSELF=%~f0"
+set "PSSELF=%PSSELF:'=''%"
 net session >nul 2>&1
 if errorlevel 1 (
     echo Requesting administrator privileges...
-    powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    powershell -NoProfile -Command "Start-Process -FilePath '%PSSELF%' -Verb RunAs"
     exit /b
 )
 
